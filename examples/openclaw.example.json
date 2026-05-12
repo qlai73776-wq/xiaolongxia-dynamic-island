@@ -1,0 +1,45 @@
+{
+  "agents": {
+    "list": [
+      {
+        "id": "main",
+        "name": "Main Agent",
+        "avatar": "🤖"
+      },
+      {
+        "id": "research",
+        "name": "Research Agent",
+        "avatar": "🔎"
+      },
+      {
+        "id": "ops",
+        "name": "Ops Agent",
+        "avatar": "🛠️"
+      }
+    ]
+  },
+  "bindings": [
+    {
+      "type": "route",
+      "agentId": "main",
+      "match": {
+        "channel": "telegram",
+        "accountId": "example-telegram-account"
+      }
+    },
+    {
+      "type": "route",
+      "agentId": "research",
+      "match": {
+        "channel": "weixin"
+      }
+    },
+    {
+      "type": "route",
+      "agentId": "ops",
+      "match": {
+        "channel": "feishu"
+      }
+    }
+  ]
+}

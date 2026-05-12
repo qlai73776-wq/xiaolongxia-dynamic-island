@@ -1,0 +1,299 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A1000001 = {
+			isa = PBXBuildFile;
+			fileRef = A1000011;
+		};
+		A1000002 = {
+			isa = PBXBuildFile;
+			fileRef = A1000012;
+		};
+		A1000003 = {
+			isa = PBXBuildFile;
+			fileRef = A1000013;
+		};
+		A1000004 = {
+			isa = PBXBuildFile;
+			fileRef = A1000014;
+		};
+		A1000006 = {
+			isa = PBXBuildFile;
+			fileRef = A1000015;
+		};
+		A1000007 = {
+			isa = PBXBuildFile;
+			fileRef = A1000016;
+		};
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A1000011 = {
+			isa = PBXFileReference;
+			fileEncoding = 4;
+			lastKnownFileType = sourcecode.swift;
+			name = Models.swift;
+			path = OpenClawIsland/Models.swift;
+			sourceTree = "<group>";
+		};
+		A1000012 = {
+			isa = PBXFileReference;
+			fileEncoding = 4;
+			lastKnownFileType = sourcecode.swift;
+			name = ViewModel.swift;
+			path = OpenClawIsland/ViewModel.swift;
+			sourceTree = "<group>";
+		};
+		A1000013 = {
+			isa = PBXFileReference;
+			fileEncoding = 4;
+			lastKnownFileType = sourcecode.swift;
+			name = DynamicIslandView.swift;
+			path = OpenClawIsland/DynamicIslandView.swift;
+			sourceTree = "<group>";
+		};
+		A1000014 = {
+			isa = PBXFileReference;
+			fileEncoding = 4;
+			lastKnownFileType = sourcecode.swift;
+			name = AppDelegate.swift;
+			path = OpenClawIsland/AppDelegate.swift;
+			sourceTree = "<group>";
+		};
+		A1000015 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.plist.xml;
+			name = Info.plist;
+			path = OpenClawIsland/Info.plist;
+			sourceTree = "<group>";
+		};
+		A1000016 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.plist.xml;
+			name = OpenClawIsland.entitlements;
+			path = OpenClawIsland/OpenClawIsland.entitlements;
+			sourceTree = "<group>";
+		};
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A1000021 = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A1000030 = {
+			isa = PBXGroup;
+			children = (
+				A1000031,
+				A1000032,
+				A1000033,
+			);
+			sourceTree = "<group>";
+		};
+		A1000031 = {
+			isa = PBXGroup;
+			children = (
+				A1000011,
+				A1000012,
+				A1000013,
+				A1000014,
+				A1000015,
+				A1000016,
+			);
+			name = OpenClawIsland;
+			sourceTree = "<group>";
+		};
+		A1000032 = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = OpenClawIslandTests;
+			sourceTree = "<group>";
+		};
+		A1000033 = {
+			isa = PBXGroup;
+			children = (
+				A1000040,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A1000050 = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1000051;
+			buildPhases = (
+				A1000052,
+				A1000021,
+				A1000053,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OpenClawIsland;
+			productName = OpenClawIsland;
+			productReference = A1000055;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A1000060 = {
+			isa = PBXProject;
+			archiveVersion = 1;
+			configurationList = A1000061;
+			productRefGroup = A1000033;
+			projectRoot = "";
+			targets = (
+				A1000050,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A1000053 = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000006,
+				A1000007,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A1000052 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000001,
+				A1000002,
+				A1000003,
+				A1000004,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A1000070 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SDKROOT)/usr/lib/swift",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = OpenClawIsland/Info.plist;
+				INFOPLIST_KEY_LSUIElement = YES;
+				LSUIElement = YES;
+				LDFLAGS = "-weak-framework AppKit -weak-framework SwiftUI -weak-framework Foundation -weak-framework Combine";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+					"$(SDKROOT)/usr/lib/swift",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.openclaw.Island;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Debug;
+		};
+		A1000071 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SDKROOT)/usr/lib/swift",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = OpenClawIsland/Info.plist;
+				INFOPLIST_KEY_LSUIElement = YES;
+				LSUIElement = YES;
+				LDFLAGS = "-weak-framework AppKit -weak-framework SwiftUI -weak-framework Foundation -weak-framework Combine";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+					"$(SDKROOT)/usr/lib/swift",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.openclaw.Island;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A1000051 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1000070,
+				A1000071,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1000061 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1000070,
+				A1000071,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCProductReference section */
+		A1000040 = {
+			isa = PBXProductReference;
+			path = OpenClawIsland.app;
+			explicitFileType = wrapper.application;
+		};
+		A1000055 = {
+			isa = XCProductReference;
+			explicitFileType = wrapper.application;
+			includeInIndex = 0;
+			path = OpenClawIsland.app;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End XCProductReference section */
+
+	};
+	rootObject = A1000060;
+}
