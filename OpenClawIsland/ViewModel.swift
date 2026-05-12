@@ -21,6 +21,8 @@ final class IslandViewModel {
     private var nextSequence = 1
     private var urlHoldUntil: [String: Date] = [:]
     private var collapseToken = 0
+    private var manualSelectionUntil: Date?
+    private var telegramUpdateOffsets: [String: Int64] = [:]
 
     init() {
         let loadedAgents = AgentCatalog.load()
@@ -35,7 +37,17 @@ final class IslandViewModel {
     }
 
     var activeAgent: Agent {
-        agents.first(where: { $0.id == activeAgentId }) ?? agents[0]
+        let selected = agents.first(where: { $0.id == activeAgentId }) ?? agents[0]
+        if let manualSelectionUntil, manualSelectionUntil > Date() {
+            return selected
+        }
+        guard let newestVisible = visibleAgents.max(by: { $0.sequence < $1.sequence }) else {
+            return selected
+        }
+        if selected.state == .idle || newestVisible.sequence > selected.sequence {
+            return newestVisible
+        }
+        return selected
     }
 
     var visibleAgents: [Agent] {
@@ -48,6 +60,7 @@ final class IslandViewModel {
 
     func setAgent(id: String) {
         guard agents.contains(where: { $0.id == id }) else { return }
+        manualSelectionUntil = Date().addingTimeInterval(8.0)
         activeAgentId = id
     }
 
@@ -103,7 +116,8 @@ final class IslandViewModel {
         nextSequence += 1
 
         agents[index] = agent
-        if autoSelect {
+        if autoSelect, state != .idle {
+            manualSelectionUntil = nil
             activeAgentId = id
         }
 
@@ -113,6 +127,10 @@ final class IslandViewModel {
 
         if state.isTransient {
             scheduleIdleReset(agentId: id, sequence: agent.sequence)
+        } else if state == .receiving {
+            scheduleThinkingPromotion(agentId: id, sequence: agent.sequence)
+        } else if state == .thinking || state == .callingAPI {
+            scheduleLongRunningNotice(agentId: id, sequence: agent.sequence)
         }
     }
 
@@ -148,19 +166,35 @@ final class IslandViewModel {
     }
 
     private func startMonitoring() {
-        markExistingLogEventsProcessed()
+        restoreRecentLogState()
+        restoreRecentTelegramUpdates()
         timer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { [weak self] _ in
+            self?.refreshAgentsIfNeeded()
+            self?.ingestTelegramUpdates()
             self?.ingestOpenClawLogs()
         }
     }
 
-    private func markExistingLogEventsProcessed() {
+    private func restoreRecentLogState() {
         let files = OpenClawLogReader.latestSessionFiles(for: agents.map(\.id))
         for file in files {
             let events = OpenClawLogReader.readRecentEvents(from: file, knownEvents: Set<String>())
             for event in events {
                 processedEvents.insert(event.key)
             }
+            if let latest = events.sorted(by: { $0.date < $1.date }).last, shouldRestore(latest) {
+                apply(latest)
+            }
+        }
+    }
+
+    private func shouldRestore(_ event: OpenClawEvent) -> Bool {
+        let age = Date().timeIntervalSince(event.date)
+        switch event.kind {
+        case .done, .failed:
+            return age <= 10
+        case .userMessage, .assistantThinking, .toolCall, .toolResult:
+            return age <= 60 * 60
         }
     }
 
@@ -180,9 +214,47 @@ final class IslandViewModel {
         }
     }
 
+    private func restoreRecentTelegramUpdates() {
+        for update in TelegramUpdateReader.currentUpdates() {
+            telegramUpdateOffsets[update.accountId] = update.lastUpdateId
+            guard update.modifiedAt.timeIntervalSinceNow > -120 else { continue }
+            updateState(
+                agentId: update.agentId,
+                state: .receiving,
+                detail: "收到 Telegram 消息",
+                date: update.modifiedAt
+            )
+        }
+    }
+
+    private func ingestTelegramUpdates() {
+        for update in TelegramUpdateReader.currentUpdates() {
+            let previous = telegramUpdateOffsets[update.accountId]
+            telegramUpdateOffsets[update.accountId] = update.lastUpdateId
+            if let previous {
+                guard update.lastUpdateId > previous else { continue }
+            } else {
+                guard update.modifiedAt.timeIntervalSinceNow > -120 else { continue }
+            }
+            updateState(
+                agentId: update.agentId,
+                state: .receiving,
+                detail: "收到 Telegram 消息",
+                date: update.modifiedAt
+            )
+        }
+    }
+
     private func refreshAgentsIfNeeded() {
-        for discovered in AgentCatalog.load() where !agents.contains(where: { $0.id == discovered.id }) {
-            agents.append(discovered)
+        for discovered in AgentCatalog.load() {
+            if let index = agents.firstIndex(where: { $0.id == discovered.id }) {
+                var agent = agents[index]
+                agent.name = discovered.name
+                agent.avatar = discovered.avatar
+                agents[index] = agent
+            } else {
+                agents.append(discovered)
+            }
         }
     }
 
@@ -225,11 +297,49 @@ final class IslandViewModel {
             agent.detail = WorkState.idle.defaultDetail
             agent.updatedAt = Date()
             self.agents[index] = agent
-            if self.activeAgentId == agentId, let next = self.visibleAgents.first {
+            if self.activeAgentId == agentId, let next = self.visibleAgents.max(by: { $0.sequence < $1.sequence }) {
                 self.activeAgentId = next.id
             }
             if self.visibleAgents.isEmpty {
                 self.isExpanded = false
+            }
+        }
+    }
+
+    private func scheduleThinkingPromotion(agentId: String, sequence: Int) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) { [weak self] in
+            guard let self else { return }
+            guard let index = self.agents.firstIndex(where: { $0.id == agentId }) else { return }
+            guard self.agents[index].sequence == sequence else { return }
+            guard self.agents[index].state == .receiving else { return }
+
+            var agent = self.agents[index]
+            agent.state = .thinking
+            agent.detail = "已收到任务，正在等待 OpenClaw 处理"
+            agent.updatedAt = Date()
+            self.agents[index] = agent
+            self.scheduleLongRunningNotice(agentId: agentId, sequence: sequence)
+        }
+    }
+
+    private func scheduleLongRunningNotice(agentId: String, sequence: Int) {
+        let notices: [(TimeInterval, String)] = [
+            (60, "仍在处理，任务耗时较长"),
+            (5 * 60, "仍在思考，可能正在等待模型或工具返回"),
+            (15 * 60, "持续处理中，建议点开聊天窗口确认是否卡住")
+        ]
+
+        for notice in notices {
+            DispatchQueue.main.asyncAfter(deadline: .now() + notice.0) { [weak self] in
+                guard let self else { return }
+                guard let index = self.agents.firstIndex(where: { $0.id == agentId }) else { return }
+                guard self.agents[index].sequence == sequence else { return }
+                guard self.agents[index].state == .thinking || self.agents[index].state == .callingAPI else { return }
+
+                var agent = self.agents[index]
+                agent.detail = notice.1
+                agent.updatedAt = Date()
+                self.agents[index] = agent
             }
         }
     }
@@ -317,9 +427,13 @@ private struct OpenClawEvent {
 }
 
 private enum AgentCatalog {
+    static var configURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".openclaw/openclaw.json")
+    }
+
     static func load() -> [Agent] {
         var discovered: [String: Agent] = [:]
-        let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".openclaw/openclaw.json")
+        let url = configURL
         if let data = try? Data(contentsOf: url),
            let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             if let configuredAgents = root.value(at: ["agents", "list"]) as? [[String: Any]] {
@@ -365,6 +479,65 @@ private enum AgentCatalog {
         let choices = ["🤖", "🧠", "🔎", "🛠️", "📡", "💬", "⚙️", "✨"]
         let value = abs(id.hashValue ^ name.hashValue)
         return choices[value % choices.count]
+    }
+}
+
+private struct TelegramUpdate {
+    var accountId: String
+    var agentId: String
+    var lastUpdateId: Int64
+    var modifiedAt: Date
+}
+
+private enum TelegramUpdateReader {
+    static func currentUpdates() -> [TelegramUpdate] {
+        let routes = telegramRoutes()
+        guard !routes.isEmpty else { return [] }
+
+        let directory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".openclaw/telegram")
+        return routes.compactMap { accountId, agentId in
+            let url = directory.appendingPathComponent("update-offset-\(accountId).json")
+            guard let data = try? Data(contentsOf: url),
+                  let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let updateId = numberValue(root["lastUpdateId"]) else {
+                return nil
+            }
+            let values = try? url.resourceValues(forKeys: [.contentModificationDateKey])
+            return TelegramUpdate(
+                accountId: accountId,
+                agentId: agentId,
+                lastUpdateId: updateId,
+                modifiedAt: values?.contentModificationDate ?? Date()
+            )
+        }
+    }
+
+    private static func telegramRoutes() -> [String: String] {
+        guard let data = try? Data(contentsOf: AgentCatalog.configURL),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let bindings = root["bindings"] as? [[String: Any]] else {
+            return [:]
+        }
+
+        var routes: [String: String] = [:]
+        for binding in bindings {
+            guard let agentId = binding["agentId"] as? String, !agentId.isEmpty else { continue }
+            guard let match = binding["match"] as? [String: Any] else { continue }
+            guard match["channel"] as? String == "telegram" else { continue }
+            guard let accountId = match["accountId"] as? String, !accountId.isEmpty else { continue }
+            routes[accountId] = agentId
+        }
+        return routes
+    }
+
+    private static func numberValue(_ value: Any?) -> Int64? {
+        if let number = value as? NSNumber {
+            return number.int64Value
+        }
+        if let string = value as? String {
+            return Int64(string)
+        }
+        return nil
     }
 }
 
@@ -434,7 +607,11 @@ private enum OpenClawLogReader {
         }
 
         if role == "user" {
-            return OpenClawEvent(key: key, agentId: agentId, date: date, kind: .userMessage, detail: firstText(in: message) ?? "收到新的任务")
+            let text = firstText(in: message)
+            if isHeartbeatPoll(text) {
+                return nil
+            }
+            return OpenClawEvent(key: key, agentId: agentId, date: date, kind: .userMessage, detail: text ?? "收到新的任务")
         }
 
         if role == "toolResult" {
@@ -501,6 +678,13 @@ private enum OpenClawLogReader {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if cleaned.count <= 90 { return cleaned }
         return String(cleaned.prefix(90)) + "..."
+    }
+
+    private static func isHeartbeatPoll(_ text: String?) -> Bool {
+        let normalized = text?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        return normalized == "[openclaw heartbeat poll]"
     }
 }
 

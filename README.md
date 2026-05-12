@@ -17,8 +17,11 @@ A macOS Dynamic Island companion for OpenClaw. It runs in the background, watche
 - Expands automatically when the pointer hovers over the island.
 - Stays expanded while the pointer remains over it.
 - Switches agents with horizontal trackpad / mouse-wheel gestures.
-- Discovers agents from the local OpenClaw config and agent session folders.
+- Automatically switches to the agent that most recently changed state.
+- Discovers and refreshes agents from the local OpenClaw config and agent session folders.
 - Supports unlimited agents.
+- Detects new Telegram inbound messages from OpenClaw Telegram offset files, so the island can appear as soon as a Telegram bot receives a message instead of waiting for the agent reply.
+- Keeps long-running tasks visible with progressive "still thinking" notices instead of hiding prematurely.
 - Works across OpenClaw message platforms because it follows OpenClaw agent/session state, not a specific channel:
   - Telegram
   - WeChat
@@ -40,6 +43,7 @@ At runtime it reads only local OpenClaw metadata from the user's machine:
 
 - `~/.openclaw/openclaw.json`
 - `~/.openclaw/agents/<agent-id>/sessions/*.jsonl`
+- `~/.openclaw/telegram/update-offset-<account-id>.json` when Telegram routes are configured
 
 Do not commit your own `~/.openclaw` folder, bot tokens, gateway tokens, or private logs.
 
@@ -118,6 +122,37 @@ Example public-safe OpenClaw config shape:
 
 The config above is only an example. Do not publish real account IDs or tokens.
 
+The app also refreshes this catalog while running. If the user adds a new OpenClaw agent or route in `openclaw.json`, the island can pick it up without code changes. Existing agent display names and avatars are refreshed from config as well.
+
+## Telegram Inbound Detection
+
+OpenClaw agent session files are reliable, but they can be written after the platform message has already arrived. For Telegram, the island also watches OpenClaw's local Telegram update offsets:
+
+```text
+~/.openclaw/telegram/update-offset-<account-id>.json
+```
+
+The app reads `openclaw.json` bindings to map:
+
+```text
+Telegram account ID -> OpenClaw agent ID
+```
+
+When a Telegram offset increases, the mapped agent immediately enters `receiving` and becomes the active island agent. This gives immediate visual feedback as soon as the bot receives a message.
+
+The Telegram listener is config-driven. Adding another Telegram bot only requires adding the normal OpenClaw agent and route binding; no code changes are needed.
+
+## Long-Running Task Behavior
+
+The island avoids hiding active work too early:
+
+- `receiving` promotes to `thinking` after a short delay if no later event has arrived.
+- Long-running `thinking` / `callingAPI` states keep the island visible.
+- Progressive details are shown for work that is taking longer than expected.
+- `done` and `failed` remain visible for about 10 seconds, then return to `idle`.
+
+Heartbeat poll messages are ignored so recurring OpenClaw heartbeat checks do not keep the island open.
+
 ## Explicit Status URL
 
 Any local process can push status:
@@ -150,6 +185,8 @@ Supported query parameters:
 | Long press | Local demo workflow |
 
 Horizontal gestures are rate-limited so one continuous swipe switches only one agent. After a short cooldown, another swipe can switch again without moving the pointer away.
+
+Manual agent selection has a short priority window so the user can inspect another agent without being immediately pulled back by an older background task. New live status from an agent still auto-selects the corresponding agent.
 
 ## OpenClaw Skill Package
 
